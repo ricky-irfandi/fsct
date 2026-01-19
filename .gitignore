@@ -1,0 +1,70 @@
+# Binaries
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+fsct
+fsct.exe
+
+# Test binary
+*.test
+*.test.exe
+
+# Coverage
+coverage.out
+coverage.html
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+*.log
+
+# Go
+go.work
+go.work.sum
+*.out
+
+# Flutter/Dart
+.dart_tool/
+.pub-cache/
+.pub/
+build/
+android/.gradle/
+android/local.properties
+android/key.properties
+ios/Pods/
+ios/Podfile.lock
+ios/Runner/Assets.xcassets/AppIcon.appiconset/Contents.json
+.fvm/
+example/
+
+# VS Code
+.vscode/extensions.json
+
+# Logs
+*.log
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Secrets (should never be committed)
+*.env
+*.env.local
+*.env.*.local
+secrets/
+credentials/

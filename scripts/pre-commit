@@ -1,0 +1,38 @@
+package main
+
+#!/usr/bin/env bash
+# FSCT Pre-commit Hook
+# Install this hook by running: fsct install-hook
+
+set -e
+
+echo "Running FSCT pre-commit checks..."
+
+# Get project root
+PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo ".")
+
+# Check if fsct is installed
+if ! command -v fsct &> /dev/null; then
+    echo "FSCT not found. Installing..."
+    go install github.com/rickyirfandi/fsct@latest
+fi
+
+# Run FSCT with fast options for pre-commit
+echo "Analyzing project compliance..."
+
+# Run only critical checks for pre-commit
+fsct check "$PROJECT_ROOT" \
+    --severity high \
+    --format console \
+    --ci
+
+if [ $? -ne 0 ]; then
+    echo ""
+    echo "❌ Compliance check failed. Please fix the issues above."
+    echo "   Run 'fsct check .' for full details."
+    exit 1
+fi
+
+echo ""
+echo "✅ Pre-commit compliance check passed!"
+exit 0

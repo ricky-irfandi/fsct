@@ -1,0 +1,85 @@
+name: FSCT Compliance Check
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  fsct:
+    name: Run Compliance Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          cache: true
+
+      - name: Install FSCT
+        run: go install github.com/rickyirfandi/fsct@latest
+
+      - name: Run FSCT
+        id: fsct
+        run: |
+          fsct check . --ci --format json --output fsct-report.json || true
+
+      - name: Upload FSCT Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fsct-report
+          path: fsct-report.json
+          retention-days: 30
+
+      - name: Parse High Severity Issues
+        if: always()
+        run: |
+          if [ -f fsct-report.json ]; then
+            HIGH=$(cat fsct-report.json | jq -r '.summary.high')
+            WARNING=$(cat fsct-report.json | jq -r '.summary.warning')
+            echo "High severity issues: $HIGH"
+            echo "Warning issues: $WARNING"
+            
+            if [ "$HIGH" -gt 0 ]; then
+              echo "::warning::Found $HIGH high severity compliance issues!"
+              echo "fsct_high=$HIGH" >> $GITHUB_OUTPUT
+            else
+              echo "fsct_high=0" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "fsct_high=0" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            if (fs.existsSync('fsct-report.json')) {
+              const report = JSON.parse(fs.readFileSync('fsct-report.json', 'utf8'));
+              const body = `## FSCT Compliance Report
+              
+              **High Severity:** ${report.summary.high}
+              **Warning:** ${report.summary.warning}
+              **Info:** ${report.summary.info}
+              **Passed:** ${report.summary.passed}
+              
+              ${report.findings.length > 0 ? `### Findings (${report.findings.length})
+              
+              ${report.findings.map(f => `- **[${f.id}](${f.severity})** ${f.title}: ${f.message}`).slice(0, 10).join('\n')}` : '✅ No issues found!'}
+              `;
+              
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: body
+              });
+            }
