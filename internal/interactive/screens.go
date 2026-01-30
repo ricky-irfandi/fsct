@@ -2,17 +2,476 @@ package interactive
 
 import (
 	"fmt"
-	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-type MessageScreen struct {
-	message  string
-	subtitle string
+const tickInterval = 200 * time.Millisecond
+
+type wizardStep int
+
+const (
+	stepPath wizardStep = iota
+	stepPlatform
+	stepFormat
+	stepSeverity
+	stepAI
+	stepConfirm
+)
+
+type CheckWizard struct {
+	step       wizardStep
+	stepCursor int
+	path       string
+	platform   string
+	format     string
+	severity   string
+	aiMode     string
+}
+
+func NewCheckWizard() *CheckWizard {
+	return &CheckWizard{
+		step:       stepPath,
+		stepCursor: 0,
+		path:       ".",
+		platform:   "both",
+		format:     "console",
+		severity:   "info",
+		aiMode:     "auto",
+	}
+}
+
+func (m *CheckWizard) Init() tea.Cmd {
+	return nil
+}
+
+func (m *CheckWizard) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, menuKeys.Quit):
+			return NewMenuModel(), nil
+		case key.Matches(msg, menuKeys.Back):
+			if m.step > stepPath {
+				m.step--
+				m.stepCursor = 0
+			}
+		case key.Matches(msg, menuKeys.Enter):
+			if m.step == stepConfirm {
+				return NewRunCheckScreen(m.path, m.platform, m.format, m.severity, m.aiMode), nil
+			}
+			m.step++
+			m.stepCursor = 0
+		case key.Matches(msg, menuKeys.Up):
+			m.handleUp()
+		case key.Matches(msg, menuKeys.Down):
+			m.handleDown()
+		}
+	}
+	return m, nil
+}
+
+func (m *CheckWizard) handleUp() {
+	if m.stepCursor > 0 {
+		m.stepCursor--
+	}
+	m.updateSelection()
+}
+
+func (m *CheckWizard) handleDown() {
+	max := m.getMaxCursor()
+	if m.stepCursor < max {
+		m.stepCursor++
+	}
+	m.updateSelection()
+}
+
+func (m *CheckWizard) getMaxCursor() int {
+	switch m.step {
+	case stepPath:
+		return 1
+	case stepPlatform:
+		return 2
+	case stepFormat:
+		return 4
+	case stepSeverity:
+		return 2
+	case stepAI:
+		return 2
+	case stepConfirm:
+		return 1
+	}
+	return 0
+}
+
+func (m *CheckWizard) updateSelection() {
+	switch m.step {
+	case stepPlatform:
+		platforms := []string{"both", "android", "ios"}
+		m.platform = platforms[m.stepCursor]
+	case stepFormat:
+		formats := []string{"console", "json", "yaml", "html", "prompt"}
+		m.format = formats[m.stepCursor]
+	case stepSeverity:
+		severities := []string{"info", "warning", "high"}
+		m.severity = severities[m.stepCursor]
+	case stepAI:
+		aiModes := []string{"auto", "skip", "config"}
+		m.aiMode = aiModes[m.stepCursor]
+	}
+}
+
+func (m *CheckWizard) View() string {
+	var s string
+	s += Styles.Header.Render("FSCT Check Wizard")
+	s += "\n\n"
+	s += m.renderProgress()
+	s += "\n\n"
+	s += m.renderStep()
+	s += "\n\n"
+	s += Styles.Footer.Render("↑↓ Select • ← Go Back • Enter Next/Run • q Exit to Menu")
+	return s
+}
+
+func (m *CheckWizard) renderProgress() string {
+	steps := []string{"Path", "Platform", "Format", "Severity", "AI", "Run"}
+	var parts []string
+	for i, step := range steps {
+		if wizardStep(i) == m.step {
+			parts = append(parts, Styles.MenuItemSelected.Render(fmt.Sprintf(" %d.%s ", i+1, step)))
+		} else if wizardStep(i) < m.step {
+			parts = append(parts, Styles.Success.Render(fmt.Sprintf("%d.%s", i+1, step)))
+		} else {
+			parts = append(parts, Styles.MenuDescription.Render(fmt.Sprintf("%d.%s", i+1, step)))
+		}
+	}
+	return strings.Join(parts, " ")
+}
+
+func (m *CheckWizard) renderStep() string {
+	switch m.step {
+	case stepPath:
+		return m.renderPathStep()
+	case stepPlatform:
+		return m.renderPlatformStep()
+	case stepFormat:
+		return m.renderFormatStep()
+	case stepSeverity:
+		return m.renderSeverityStep()
+	case stepAI:
+		return m.renderAIStep()
+	case stepConfirm:
+		return m.renderConfirmStep()
+	}
+	return ""
+}
+
+func (m *CheckWizard) renderPathStep() string {
+	var s string
+	s += Styles.WizardTitle.Render("Project Path")
+	s += "\n\n"
+
+	options := []struct {
+		label string
+		path  string
+		desc  string
+	}{
+		{"Current Directory", ".", "Use current working directory"},
+		{"Enter Custom Path", "custom", "Type a specific path"},
+	}
+
+	for i, opt := range options {
+		cursor := "  "
+		if m.stepCursor == i {
+			cursor = "❯"
+			s += Styles.MenuItemSelected.Render(fmt.Sprintf("%s %s", cursor, opt.label))
+		} else {
+			s += Styles.MenuItem.Render(fmt.Sprintf("%s %s", cursor, opt.label))
+		}
+		s += "\n"
+		s += Styles.MenuDescription.Render(fmt.Sprintf("   %s", opt.desc))
+		s += "\n"
+	}
+
+	if m.stepCursor == 0 {
+		m.path = "."
+	}
+
+	s += "\n"
+	s += Styles.Info.Render(fmt.Sprintf("Selected: %s", m.path))
+	return s
+}
+
+func (m *CheckWizard) renderPlatformStep() string {
+	var s string
+	s += Styles.WizardTitle.Render("Platform")
+	s += "\n\n"
+
+	options := []struct {
+		label string
+		desc  string
+	}{
+		{"Both (Android & iOS)", "Check both Android and iOS platforms"},
+		{"Android only", "Check only Android platform"},
+		{"iOS only", "Check only iOS platform"},
+	}
+
+	for i, opt := range options {
+		cursor := "  "
+		if m.stepCursor == i {
+			cursor = "❯"
+			s += Styles.MenuItemSelected.Render(fmt.Sprintf("%s %s", cursor, opt.label))
+		} else {
+			s += Styles.MenuItem.Render(fmt.Sprintf("%s %s", cursor, opt.label))
+		}
+		s += "\n"
+		s += Styles.MenuDescription.Render(fmt.Sprintf("   %s", opt.desc))
+		s += "\n"
+	}
+
+	s += "\n"
+	s += Styles.Info.Render(fmt.Sprintf("Selected: %s", strings.Title(m.platform)))
+	return s
+}
+
+func (m *CheckWizard) renderFormatStep() string {
+	var s string
+	s += Styles.WizardTitle.Render("Output Format")
+	s += "\n\n"
+
+	options := []struct {
+		label string
+		desc  string
+	}{
+		{"Console", "Display results in terminal"},
+		{"JSON", "Output as JSON format"},
+		{"YAML", "Output as YAML format"},
+		{"HTML", "Generate HTML report"},
+		{"AI Prompt", "Generate AI analysis prompt"},
+	}
+
+	for i, opt := range options {
+		cursor := "  "
+		if m.stepCursor == i {
+			cursor = "❯"
+			s += Styles.MenuItemSelected.Render(fmt.Sprintf("%s %s", cursor, opt.label))
+		} else {
+			s += Styles.MenuItem.Render(fmt.Sprintf("%s %s", cursor, opt.label))
+		}
+		s += "\n"
+		s += Styles.MenuDescription.Render(fmt.Sprintf("   %s", opt.desc))
+		s += "\n"
+	}
+
+	s += "\n"
+	s += Styles.Info.Render(fmt.Sprintf("Selected: %s", strings.Title(m.format)))
+	return s
+}
+
+func (m *CheckWizard) renderSeverityStep() string {
+	var s string
+	s += Styles.WizardTitle.Render("Severity Filter")
+	s += "\n\n"
+
+	options := []struct {
+		label string
+		desc  string
+	}{
+		{"All severities", "Show Info, Warning, and High severity issues"},
+		{"Warning & High only", "Filter out Info level issues"},
+		{"High only", "Show only critical issues"},
+	}
+
+	for i, opt := range options {
+		cursor := "  "
+		if m.stepCursor == i {
+			cursor = "❯"
+			s += Styles.MenuItemSelected.Render(fmt.Sprintf("%s %s", cursor, opt.label))
+		} else {
+			s += Styles.MenuItem.Render(fmt.Sprintf("%s %s", cursor, opt.label))
+		}
+		s += "\n"
+		s += Styles.MenuDescription.Render(fmt.Sprintf("   %s", opt.desc))
+		s += "\n"
+	}
+
+	s += "\n"
+	s += Styles.Info.Render(fmt.Sprintf("Selected: %s", strings.Title(m.severity)))
+	return s
+}
+
+func (m *CheckWizard) renderAIStep() string {
+	var s string
+	s += Styles.WizardTitle.Render("AI Analysis")
+	s += "\n\n"
+
+	options := []struct {
+		label string
+		desc  string
+	}{
+		{"Use AI if configured", "Enable AI analysis when API key is set"},
+		{"Skip AI analysis", "Run only static checks"},
+		{"Configure AI Settings", "Set up AI provider configuration"},
+	}
+
+	for i, opt := range options {
+		cursor := "  "
+		if m.stepCursor == i {
+			cursor = "❯"
+			s += Styles.MenuItemSelected.Render(fmt.Sprintf("%s %s", cursor, opt.label))
+		} else {
+			s += Styles.MenuItem.Render(fmt.Sprintf("%s %s", cursor, opt.label))
+		}
+		s += "\n"
+		s += Styles.MenuDescription.Render(fmt.Sprintf("   %s", opt.desc))
+		s += "\n"
+	}
+
+	s += "\n"
+	aiLabel := "Use if configured"
+	if m.aiMode == "skip" {
+		aiLabel = "Skip"
+	} else if m.aiMode == "config" {
+		aiLabel = "Configure"
+	}
+	s += Styles.Info.Render(fmt.Sprintf("Selected: %s", aiLabel))
+	return s
+}
+
+func (m *CheckWizard) renderConfirmStep() string {
+	var s string
+	s += Styles.WizardTitle.Render("Ready to Run")
+	s += "\n\n"
+
+	s += Styles.MenuDescription.Render("Configuration Summary:")
+	s += "\n\n"
+
+	s += Styles.MenuItem.Render(fmt.Sprintf("  Path:     %s", m.path))
+	s += "\n"
+	s += Styles.MenuItem.Render(fmt.Sprintf("  Platform: %s", strings.Title(m.platform)))
+	s += "\n"
+	s += Styles.MenuItem.Render(fmt.Sprintf("  Format:   %s", strings.Title(m.format)))
+	s += "\n"
+	s += Styles.MenuItem.Render(fmt.Sprintf("  Severity: %s", strings.Title(m.severity)))
+	s += "\n"
+	s += Styles.MenuItem.Render(fmt.Sprintf("  AI Mode:  %s", strings.Title(m.aiMode)))
+	s += "\n\n"
+
+	options := []struct {
+		label string
+		desc  string
+	}{
+		{"Run Check", "Execute compliance check with these settings"},
+		{"Back", "Return to previous steps"},
+	}
+
+	for i, opt := range options {
+		cursor := "  "
+		if m.stepCursor == i {
+			cursor = "❯"
+			s += Styles.MenuItemSelected.Render(fmt.Sprintf("%s %s", cursor, opt.label))
+		} else {
+			s += Styles.MenuItem.Render(fmt.Sprintf("%s %s", cursor, opt.label))
+		}
+		s += "\n"
+		_ = opt.desc
+	}
+
+	return s
+}
+
+type RunCheckScreen struct {
+	path     string
+	platform string
+	format   string
+	severity string
+	aiMode   string
 	done     bool
+	output   string
+	tick     int
+}
+
+func NewRunCheckScreen(path, platform, format, severity, aiMode string) *RunCheckScreen {
+	return &RunCheckScreen{
+		path:     path,
+		platform: platform,
+		format:   format,
+		severity: severity,
+		aiMode:   aiMode,
+		done:     false,
+		output:   "",
+		tick:     0,
+	}
+}
+
+func (m *RunCheckScreen) Init() tea.Cmd {
+	return tickCmd()
+}
+
+func tickCmd() tea.Cmd {
+	return tea.Tick(tickInterval, func(_ time.Time) tea.Msg {
+		return tickMsg{}
+	})
+}
+
+type tickMsg struct{}
+
+type outputMsg struct{ output string }
+
+func (m *RunCheckScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tickMsg:
+		if !m.done {
+			m.tick++
+			return m, tickCmd()
+		}
+	case outputMsg:
+		m.done = true
+		m.output = msg.output
+	case tea.KeyMsg:
+		if key.Matches(msg, menuKeys.Enter) || key.Matches(msg, menuKeys.Quit) {
+			return NewMenuModel(), nil
+		}
+	}
+	return m, nil
+}
+
+func (m *RunCheckScreen) View() string {
+	var s string
+	s += Styles.Header.Render("Running Compliance Check")
+	s += "\n\n"
+	s += Styles.Subtitle.Render(fmt.Sprintf("Analyzing: %s", m.path))
+	s += "\n\n"
+
+	if !m.done {
+		spinner := []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠸"}
+		frame := spinner[m.tick%len(spinner)]
+		s += Styles.Info.Render(fmt.Sprintf("%s Running compliance checks...", frame))
+		s += "\n\n"
+		s += Styles.MenuDescription.Render("This may take a few moments...")
+	} else {
+		if len(m.output) > 500 {
+			s += Styles.MenuItem.Render(m.output[:500])
+			s += "\n"
+			s += Styles.MenuDescription.Render("... (output truncated)")
+		} else {
+			s += Styles.MenuItem.Render(m.output)
+		}
+		s += "\n\n"
+	}
+
+	s += Styles.Footer.Render("Press any key to return to menu")
+	return s
+}
+
+type MessageScreen struct {
+	message   string
+	subtitle  string
+	done      bool
+	showAbout bool
 }
 
 func NewMessageScreen(message, subtitle string) *MessageScreen {
@@ -47,204 +506,6 @@ func (m *MessageScreen) View() string {
 	s += Styles.Subtitle.Render(m.subtitle)
 	s += "\n\n"
 	s += Styles.Footer.Render("Enter to continue • q Quit")
-	return s
-}
-
-type CheckWizard struct {
-	step     int
-	path     string
-	platform string
-	format   string
-	severity string
-	aiMode   string
-}
-
-func NewCheckWizard() *CheckWizard {
-	return &CheckWizard{
-		step:     0,
-		path:     ".",
-		platform: "both",
-		format:   "console",
-		severity: "info",
-		aiMode:   "auto",
-	}
-}
-
-func (m *CheckWizard) Init() tea.Cmd {
-	return nil
-}
-
-func (m *CheckWizard) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch {
-		case key.Matches(msg, menuKeys.Up):
-			m.step--
-			if m.step < 0 {
-				m.step = 0
-			}
-		case key.Matches(msg, menuKeys.Down):
-			m.step++
-			if m.step > 4 {
-				m.step = 4
-			}
-		case key.Matches(msg, menuKeys.Enter):
-			if m.step == 4 {
-				return NewRunCheckScreen(m.path, m.platform, m.format, m.severity, m.aiMode), nil
-			}
-			m.step++
-		case key.Matches(msg, menuKeys.Quit):
-			return NewMenuModel(), nil
-		}
-	}
-	return m, nil
-}
-
-func (m *CheckWizard) View() string {
-	steps := []string{"Project Path", "Platform", "Output Format", "Severity", "AI Options"}
-	stepNames := []string{"Select project to analyze", "Choose platforms to check", "Choose output format", "Filter by severity", "Configure AI analysis"}
-
-	var s string
-	s += Styles.Header.Render("FSCT Check Wizard")
-	s += "\n\n"
-	s += Styles.WizardStep.Render(fmt.Sprintf("Step %d/5: %s", m.step+1, steps[m.step]))
-	s += "\n\n"
-	s += Styles.Label.Render(stepNames[m.step])
-	s += "\n\n"
-
-	switch m.step {
-	case 0:
-		s += Styles.Input.Render("📁 " + m.path)
-		s += "\n\n"
-		s += Styles.Selector.Render("Current directory")
-	case 1:
-		platforms := []string{"Both (Android & iOS)", "Android only", "iOS only"}
-		for i, p := range platforms {
-			prefix := "  "
-			if m.platform == strings.ToLower(strings.Split(p, " ")[0]) {
-				prefix = "❯"
-			}
-			if m.step == 1 && i == 0 && m.platform == "both" {
-				prefix = "❯"
-			}
-			if m.step == 1 && i == 1 && m.platform == "android" {
-				prefix = "❯"
-			}
-			if m.step == 1 && i == 2 && m.platform == "ios" {
-				prefix = "❯"
-			}
-			if prefix == "❯" {
-				s += Styles.MenuItemSelected.Render(prefix + " " + p)
-			} else {
-				s += Styles.MenuItem.Render(prefix + " " + p)
-			}
-			s += "\n"
-		}
-	case 2:
-		formats := []string{"Console", "JSON", "YAML", "HTML", "AI Prompt"}
-		for j, f := range formats {
-			prefix := "  "
-			if m.format == strings.ToLower(f) || (m.format == "console" && f == "Console") {
-				prefix = "❯"
-			}
-			if prefix == "❯" {
-				s += Styles.MenuItemSelected.Render(prefix + " " + f)
-			} else {
-				s += Styles.MenuItem.Render(prefix + " " + f)
-			}
-			s += "\n"
-			_ = j
-		}
-	case 3:
-		severities := []string{"All severities", "Warning & High only", "High only"}
-		for i, sev := range severities {
-			prefix := "  "
-			if (m.severity == "info" && i == 0) || (m.severity == "warning" && i == 1) || (m.severity == "high" && i == 2) {
-				prefix = "❯"
-			}
-			if prefix == "❯" {
-				s += Styles.MenuItemSelected.Render(prefix + " " + sev)
-			} else {
-				s += Styles.MenuItem.Render(prefix + " " + sev)
-			}
-			s += "\n"
-		}
-	case 4:
-		aiOpts := []string{"Use AI if configured", "Skip AI analysis", "Configure AI..."}
-		for i, opt := range aiOpts {
-			prefix := "  "
-			if (m.aiMode == "auto" && i == 0) || (m.aiMode == "skip" && i == 1) || (m.aiMode == "config" && i == 2) {
-				prefix = "❯"
-			}
-			if prefix == "❯" {
-				s += Styles.MenuItemSelected.Render(prefix + " " + opt)
-			} else {
-				s += Styles.MenuItem.Render(prefix + " " + opt)
-			}
-			s += "\n"
-		}
-	}
-
-	s += "\n"
-	s += Styles.Footer.Render("↑↓ Navigate • Enter Next/Select • q Back to Menu")
-
-	return s
-}
-
-type RunCheckScreen struct {
-	path     string
-	platform string
-	format   string
-	severity string
-	aiMode   string
-	done     bool
-}
-
-func NewRunCheckScreen(path, platform, format, severity, aiMode string) *RunCheckScreen {
-	return &RunCheckScreen{
-		path:     path,
-		platform: platform,
-		format:   format,
-		severity: severity,
-		aiMode:   aiMode,
-		done:     false,
-	}
-}
-
-func (m *RunCheckScreen) Init() tea.Cmd {
-	return func() tea.Msg {
-		cmd := exec.Command("go", "run", "./cmd/fsct", "check", m.path,
-			"--platform", m.platform,
-			"--format", m.format,
-			"--severity", m.severity)
-		output, _ := cmd.CombinedOutput()
-		return outputMsg{output: string(output)}
-	}
-}
-
-type outputMsg struct{ output string }
-
-func (m *RunCheckScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case outputMsg:
-		m.done = true
-	case tea.KeyMsg:
-		if key.Matches(msg, menuKeys.Enter) || key.Matches(msg, menuKeys.Quit) {
-			return NewMenuModel(), nil
-		}
-	}
-	return m, nil
-}
-
-func (m *RunCheckScreen) View() string {
-	var s string
-	s += Styles.Header.Render("Running Compliance Check")
-	s += "\n\n"
-	s += Styles.Subtitle.Render(fmt.Sprintf("Analyzing: %s", m.path))
-	s += "\n\n"
-	s += Styles.Info.Render("Running checks... (output would appear here)")
-	s += "\n\n"
-	s += Styles.Footer.Render("Press any key to return to menu")
 	return s
 }
 

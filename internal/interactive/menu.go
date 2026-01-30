@@ -1,6 +1,8 @@
 package interactive
 
 import (
+	"fmt"
+
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -19,6 +21,7 @@ type MenuModel struct {
 	selected map[int]struct{}
 	width    int
 	height   int
+	showHelp bool
 }
 
 func NewMenuModel() *MenuModel {
@@ -26,6 +29,7 @@ func NewMenuModel() *MenuModel {
 		cursor:   0,
 		items:    MainMenuItems(),
 		selected: make(map[int]struct{}),
+		showHelp: false,
 	}
 }
 
@@ -63,17 +67,29 @@ func (m *MenuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
+		case key.Matches(msg, menuKeys.Help):
+			m.showHelp = !m.showHelp
 		case key.Matches(msg, menuKeys.Up):
+			if m.showHelp {
+				break
+			}
 			m.cursor--
 			if m.cursor < 0 {
 				m.cursor = len(m.items) - 1
 			}
 		case key.Matches(msg, menuKeys.Down):
+			if m.showHelp {
+				break
+			}
 			m.cursor++
 			if m.cursor >= len(m.items) {
 				m.cursor = 0
 			}
 		case key.Matches(msg, menuKeys.Enter):
+			if m.showHelp {
+				m.showHelp = false
+				break
+			}
 			if item, ok := m.getItem(); ok {
 				if item.Action != nil {
 					return item.Action()
@@ -90,6 +106,10 @@ func (m *MenuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *MenuModel) View() string {
+	if m.showHelp {
+		return m.renderHelpOverlay()
+	}
+
 	var s string
 	s += Styles.Header.Render("FSCT - Flutter Store Compliance Tool")
 	s += "\n\n"
@@ -108,7 +128,37 @@ func (m *MenuModel) View() string {
 	}
 
 	s += "\n"
-	s += Styles.Footer.Render("↑↓ Navigate • Enter Select • q Quit")
+	s += Styles.Footer.Render("↑↓ Navigate • Enter Select • ? Help • q Quit")
+
+	return s
+}
+
+func (m *MenuModel) renderHelpOverlay() string {
+	var s string
+	s += Styles.Header.Render("Keyboard Shortcuts")
+	s += "\n\n"
+
+	shortcuts := []struct {
+		key  string
+		desc string
+	}{
+		{"↑ / k", "Move selection up"},
+		{"↓ / j", "Move selection down"},
+		{"Enter", "Select current item"},
+		{"← / h", "Go back (in wizard)"},
+		{"?", "Show/hide this help"},
+		{"q", "Quit FSCT"},
+	}
+
+	for _, sc := range shortcuts {
+		s += Styles.MenuItem.Render(fmt.Sprintf("  %-12s  %s", Styles.Key.Render(sc.key), sc.desc))
+		s += "\n"
+	}
+
+	s += "\n"
+	s += Styles.MenuDescription.Render("Press ? to close this help")
+	s += "\n\n"
+	s += Styles.Footer.Render("Press ? to close • q Quit")
 
 	return s
 }
@@ -125,6 +175,8 @@ var menuKeys = struct {
 	Down  key.Binding
 	Enter key.Binding
 	Quit  key.Binding
+	Back  key.Binding
+	Help  key.Binding
 }{
 	Up: key.NewBinding(
 		key.WithKeys("up", "k"),
@@ -141,5 +193,13 @@ var menuKeys = struct {
 	Quit: key.NewBinding(
 		key.WithKeys("q", "ctrl+c"),
 		key.WithHelp("q", "quit"),
+	),
+	Back: key.NewBinding(
+		key.WithKeys("left", "h", "backspace"),
+		key.WithHelp("←/h", "go back"),
+	),
+	Help: key.NewBinding(
+		key.WithKeys("?", "f1"),
+		key.WithHelp("?", "help"),
 	),
 }
