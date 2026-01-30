@@ -275,6 +275,8 @@ func NewFormatter(format string) Formatter {
 		return &YAMLFormatter{}
 	case "html":
 		return &HTMLFormatter{}
+	case "prompt":
+		return NewPromptFormatter()
 	default:
 		return &ConsoleFormatter{}
 	}

@@ -1,5 +1,26 @@
 package config
 
+import (
+	"os"
+	"path/filepath"
+
+	"gopkg.in/yaml.v3"
+)
+
+// LoadConfig loads configuration from .fsct.yaml file if it exists
+func LoadConfig(projectPath string) *Config {
+	cfg := &Config{}
+
+	configPath := filepath.Join(projectPath, ".fsct.yaml")
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return cfg
+	}
+
+	_ = yaml.Unmarshal(data, cfg)
+	return cfg
+}
+
 type Config struct {
 	AI        *AIConfig        `yaml:"ai,omitempty"`
 	Reviewer  *ReviewerConfig  `yaml:"reviewer,omitempty"`

@@ -1,7 +1,9 @@
 package registry
 
 import (
+	aipkg "github.com/ricky-irfandi/fsct/internal/ai"
 	"github.com/ricky-irfandi/fsct/internal/checker"
+	aichecks "github.com/ricky-irfandi/fsct/internal/checker/ai"
 	"github.com/ricky-irfandi/fsct/internal/checker/android"
 	"github.com/ricky-irfandi/fsct/internal/checker/code"
 	"github.com/ricky-irfandi/fsct/internal/checker/docs"
@@ -10,8 +12,10 @@ import (
 	"github.com/ricky-irfandi/fsct/internal/checker/linting"
 	"github.com/ricky-irfandi/fsct/internal/checker/perf"
 	"github.com/ricky-irfandi/fsct/internal/checker/policy"
+	"github.com/ricky-irfandi/fsct/internal/checker/reviewer"
 	"github.com/ricky-irfandi/fsct/internal/checker/security"
 	"github.com/ricky-irfandi/fsct/internal/checker/testing"
+	"github.com/ricky-irfandi/fsct/internal/config"
 )
 
 type CheckerRegistry struct {
@@ -142,6 +146,19 @@ func (r *CheckerRegistry) registerPerfChecks() {
 	r.checks["PERF-006"] = &perf.DependencyOptimizationCheck{}
 }
 
+// RegisterAIChecks registers AI-powered checks if AI client is available
+func (r *CheckerRegistry) RegisterAIChecks(client *aipkg.Client) {
+	if client == nil || !client.IsAvailable() {
+		return
+	}
+
+	r.checks["AI-001"] = aichecks.AI001PermissionJustificationCheck(client)
+	r.checks["AI-002"] = aichecks.AI002PolicyComplianceCheck(client)
+	r.checks["AI-003"] = aichecks.AI003DependencyRiskCheck(client)
+	r.checks["AI-004"] = aichecks.AI004StoreGuidanceCheck(client)
+	r.checks["AI-005"] = aichecks.AI005ReviewerNotesCheck(client)
+}
+
 func (r *CheckerRegistry) Get(id string) (checker.Check, bool) {
 	check, ok := r.checks[id]
 	return check, ok
@@ -167,5 +184,29 @@ func (r *CheckerRegistry) GetCategories() []string {
 	return []string{
 		"Android", "iOS", "Flutter", "Security", "Policy",
 		"Code Quality", "Testing", "Linting", "Documentation", "Performance",
+		"AI Analysis", "Reviewer",
+	}
+}
+
+// HasAIChecks returns true if AI checks are registered
+func (r *CheckerRegistry) HasAIChecks() bool {
+	_, hasAI001 := r.checks["AI-001"]
+	return hasAI001
+}
+
+// RegisterReviewerChecks registers reviewer verification checks
+func (r *CheckerRegistry) RegisterReviewerChecks(cfg *config.ReviewerConfig) {
+	if cfg == nil {
+		cfg = reviewer.GetConfigFromEnv()
+	}
+
+	// Always register basic credential checks
+	r.checks["REV-001"] = reviewer.NewNoCredentialsCheck(cfg)
+	r.checks["REV-002"] = reviewer.NewPlaceholderEmailCheck(cfg)
+	r.checks["REV-003"] = reviewer.NewWeakPasswordCheck(cfg)
+
+	// Register login verification only if enabled
+	if cfg != nil && cfg.Verification != nil && cfg.Verification.Enabled {
+		r.checks["REV-004"] = reviewer.NewLoginVerificationCheck(cfg)
 	}
 }
