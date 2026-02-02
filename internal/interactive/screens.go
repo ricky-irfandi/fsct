@@ -138,7 +138,7 @@ func (m *CheckWizard) View() string {
 	s += "\n\n"
 	s += m.renderStep()
 	s += "\n\n"
-	s += Styles.Footer.Render("↑↓ Select • ← Go Back • Enter Next/Run • q Exit to Menu")
+	s += Styles.Footer.Render("↑↓ Choose Option • ← Go Back • Enter Next Step • q Exit to Menu")
 	return s
 }
 
