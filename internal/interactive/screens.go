@@ -51,24 +51,30 @@ func (m *CheckWizard) Init() tea.Cmd {
 func (m *CheckWizard) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch {
-		case key.Matches(msg, menuKeys.Quit):
+		switch msg.Type {
+		case tea.KeyCtrlC, tea.KeyEsc:
 			return NewMenuModel(), nil
-		case key.Matches(msg, menuKeys.Back):
+		case tea.KeyLeft, tea.KeyBackspace:
 			if m.step > stepPath {
 				m.step--
 				m.stepCursor = 0
 			}
-		case key.Matches(msg, menuKeys.Enter):
+		case tea.KeyEnter:
 			if m.step == stepConfirm {
 				return NewRunCheckScreen(m.path, m.platform, m.format, m.severity, m.aiMode), nil
 			}
 			m.step++
 			m.stepCursor = 0
-		case key.Matches(msg, menuKeys.Up):
+		case tea.KeyUp:
 			m.handleUp()
-		case key.Matches(msg, menuKeys.Down):
+		case tea.KeyDown:
 			m.handleDown()
+		}
+		if msg.String() == "h" {
+			if m.step > stepPath {
+				m.step--
+				m.stepCursor = 0
+			}
 		}
 	}
 	return m, nil
