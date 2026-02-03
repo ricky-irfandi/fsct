@@ -36,22 +36,22 @@ func NewMenuModel() *MenuModel {
 func MainMenuItems() []MenuItem {
 	return []MenuItem{
 		{ID: "check", Label: "Run Compliance Check", Icon: "🚀", Description: "Analyze your Flutter project", Action: func() (tea.Model, tea.Cmd) {
-			return NewCheckWizard(), nil
+			return transition(NewCheckWizard())
 		}},
 		{ID: "checks", Label: "View Available Checks", Icon: "📋", Description: "Browse all 98 compliance checks", Action: func() (tea.Model, tea.Cmd) {
-			return NewChecksScreen(), nil
+			return transition(NewChecksScreen())
 		}},
 		{ID: "checklist", Label: "Generate Pre-Submit Checklist", Icon: "✅", Description: "Store submission readiness", Action: func() (tea.Model, tea.Cmd) {
-			return NewChecklistScreen(), nil
+			return transition(NewChecklistScreen())
 		}},
 		{ID: "hook", Label: "Install Git Pre-commit Hook", Icon: "🔧", Description: "Auto-check before commits", Action: func() (tea.Model, tea.Cmd) {
-			return NewHookScreen(), nil
+			return transition(NewHookScreen())
 		}},
 		{ID: "cert", Label: "Generate Compliance Certificate", Icon: "📜", Description: "Compliance documentation", Action: func() (tea.Model, tea.Cmd) {
-			return NewCertScreen(), nil
+			return transition(NewCertScreen())
 		}},
 		{ID: "config", Label: "Configure AI Settings", Icon: "🤖", Description: "Setup AI analysis provider", Action: func() (tea.Model, tea.Cmd) {
-			return NewConfigScreen(), nil
+			return transition(NewConfigScreen())
 		}},
 		{ID: "exit", Label: "Exit", Icon: "👋", Description: "Quit FSCT", Action: func() (tea.Model, tea.Cmd) {
 			return nil, tea.Quit
@@ -111,31 +111,29 @@ func (m *MenuModel) View() string {
 	}
 
 	var s string
-	s += Styles.Header.Render("FSCT - Flutter Store Compliance Tool")
+	s += renderHeader("FSCT - Flutter Store Compliance Tool")
 	s += "\n\n"
 
 	for i, item := range m.items {
-		cursor := "  "
+		cursor := " "
 		if m.cursor == i {
-			cursor = "❯"
+			cursor = cursorGlyph()
 			s += Styles.MenuItemSelected.Render(cursor + " " + item.Icon + " " + item.Label)
 		} else {
 			s += Styles.MenuItem.Render(cursor + " " + item.Icon + " " + item.Label)
 		}
-		s += "\n"
-		s += Styles.MenuDescription.Render("   " + item.Description)
-		s += "\n"
+		s += "\n" + Styles.MenuDescription.Render("  "+item.Description) + "\n"
 	}
 
 	s += "\n"
-	s += Styles.Footer.Render("↑↓ Navigate • Enter Select • ? Help • q Quit")
+	s += renderFooter("↑↓ Navigate • Enter Select • ? Help • q Quit")
 
-	return s
+	return padToWidth(s)
 }
 
 func (m *MenuModel) renderHelpOverlay() string {
 	var s string
-	s += Styles.Header.Render("Keyboard Shortcuts")
+	s += renderHeader("Keyboard Shortcuts")
 	s += "\n\n"
 
 	shortcuts := []struct {
@@ -158,9 +156,9 @@ func (m *MenuModel) renderHelpOverlay() string {
 	s += "\n"
 	s += Styles.MenuDescription.Render("Press ? to close this help")
 	s += "\n\n"
-	s += Styles.Footer.Render("Press ? to close • q Quit")
+	s += renderFooter("Press ? to close • q Quit")
 
-	return s
+	return padToWidth(s)
 }
 
 func (m *MenuModel) getItem() (MenuItem, bool) {

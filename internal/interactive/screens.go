@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -23,24 +24,37 @@ const (
 )
 
 type CheckWizard struct {
-	step       wizardStep
-	stepCursor int
-	path       string
-	platform   string
-	format     string
-	severity   string
-	aiMode     string
+	step        wizardStep
+	stepCursor  int
+	stepCursors []int
+	path        string
+	platform    string
+	format      string
+	severity    string
+	aiMode      string
+	pathInput   textinput.Model
 }
 
 func NewCheckWizard() *CheckWizard {
+	pathInput := textinput.New()
+	pathInput.Placeholder = "/path/to/project"
+	pathInput.CharLimit = 256
+	pathInput.Width = 48
+	pathInput.Prompt = ""
+	pathInput.TextStyle = Styles.Input
+	pathInput.PlaceholderStyle = Styles.MenuDescription
+	pathInput.CursorStyle = Styles.Info
+
 	return &CheckWizard{
-		step:       stepPath,
-		stepCursor: 0,
-		path:       ".",
-		platform:   "both",
-		format:     "console",
-		severity:   "info",
-		aiMode:     "auto",
+		step:        stepPath,
+		stepCursor:  0,
+		stepCursors: make([]int, 6),
+		path:        ".",
+		platform:    "both",
+		format:      "console",
+		severity:    "info",
+		aiMode:      "auto",
+		pathInput:   pathInput,
 	}
 }
 
@@ -51,31 +65,51 @@ func (m *CheckWizard) Init() tea.Cmd {
 func (m *CheckWizard) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		if msg.String() == "q" {
+			return transition(NewMenuModel())
+		}
 		switch msg.Type {
 		case tea.KeyCtrlC, tea.KeyEsc:
-			return NewMenuModel(), nil
+			return transition(NewMenuModel())
 		case tea.KeyLeft, tea.KeyBackspace:
-			if m.step > stepPath {
-				m.step--
-				m.stepCursor = 0
+			if !m.pathInputActive() {
+				m.retreatStep()
 			}
 		case tea.KeyEnter:
 			if m.step == stepConfirm {
-				return NewRunCheckScreen(m.path, m.platform, m.format, m.severity, m.aiMode), nil
+				if m.stepCursor == 1 {
+					m.retreatStep()
+					return m, nil
+				}
+				next := NewRunCheckScreen(m.path, m.platform, m.format, m.severity, m.aiMode)
+				return transition(next)
 			}
-			m.step++
-			m.stepCursor = 0
+			if m.step == stepAI && m.aiMode == "config" {
+				return transition(NewConfigScreen())
+			}
+			if m.step == stepPath && m.stepCursor == 1 {
+				customPath := strings.TrimSpace(m.pathInput.Value())
+				if customPath == "" {
+					return m, nil
+				}
+				m.path = customPath
+			}
+			m.advanceStep()
 		case tea.KeyUp:
 			m.handleUp()
 		case tea.KeyDown:
 			m.handleDown()
 		}
 		if msg.String() == "h" {
-			if m.step > stepPath {
-				m.step--
-				m.stepCursor = 0
+			if !m.pathInputActive() {
+				m.retreatStep()
 			}
 		}
+	}
+	if m.pathInputActive() {
+		var cmd tea.Cmd
+		m.pathInput, cmd = m.pathInput.Update(msg)
+		return m, cmd
 	}
 	return m, nil
 }
@@ -113,14 +147,56 @@ func (m *CheckWizard) getMaxCursor() int {
 	return 0
 }
 
+func (m *CheckWizard) advanceStep() {
+	if m.step >= stepConfirm {
+		return
+	}
+	m.stepCursors[m.step] = m.stepCursor
+	if m.step == stepSeverity && m.format == "prompt" {
+		m.step = stepConfirm
+		m.stepCursor = m.stepCursors[m.step]
+		m.updateSelection()
+		return
+	}
+	m.step++
+	m.stepCursor = m.stepCursors[m.step]
+	m.updateSelection()
+}
+
+func (m *CheckWizard) retreatStep() {
+	if m.step <= stepPath {
+		return
+	}
+	m.stepCursors[m.step] = m.stepCursor
+	m.step--
+	m.stepCursor = m.stepCursors[m.step]
+	m.updateSelection()
+}
+
+func (m *CheckWizard) pathInputActive() bool {
+	return m.step == stepPath && m.stepCursor == 1
+}
+
 func (m *CheckWizard) updateSelection() {
 	switch m.step {
+	case stepPath:
+		if m.stepCursor == 0 {
+			m.path = "."
+			m.pathInput.Blur()
+			m.pathInput.TextStyle = Styles.Input
+		} else {
+			m.pathInput.Focus()
+			m.pathInput.TextStyle = Styles.InputFocused
+		}
 	case stepPlatform:
 		platforms := []string{"both", "android", "ios"}
 		m.platform = platforms[m.stepCursor]
 	case stepFormat:
 		formats := []string{"console", "json", "yaml", "html", "prompt"}
 		m.format = formats[m.stepCursor]
+		if m.format == "prompt" {
+			m.aiMode = "skip"
+		}
 	case stepSeverity:
 		severities := []string{"info", "warning", "high"}
 		m.severity = severities[m.stepCursor]
@@ -132,29 +208,23 @@ func (m *CheckWizard) updateSelection() {
 
 func (m *CheckWizard) View() string {
 	var s string
-	s += Styles.Header.Render("FSCT Check Wizard")
+	s += renderHeader("FSCT Check Wizard")
 	s += "\n\n"
 	s += m.renderProgress()
 	s += "\n\n"
 	s += m.renderStep()
 	s += "\n\n"
-	s += Styles.Footer.Render("↑↓ Choose Option • ← Go Back • Enter Next Step • q Exit to Menu")
-	return s
+	s += renderFooter("↑↓ Choose • Enter Continue • ← Back • q Menu")
+	return padToWidth(s)
 }
 
 func (m *CheckWizard) renderProgress() string {
 	steps := []string{"Path", "Platform", "Format", "Severity", "AI", "Run"}
-	var parts []string
-	for i, step := range steps {
-		if wizardStep(i) == m.step {
-			parts = append(parts, Styles.MenuItemSelected.Render(fmt.Sprintf(" %d.%s ", i+1, step)))
-		} else if wizardStep(i) < m.step {
-			parts = append(parts, Styles.Success.Render(fmt.Sprintf("%d.%s", i+1, step)))
-		} else {
-			parts = append(parts, Styles.MenuDescription.Render(fmt.Sprintf("%d.%s", i+1, step)))
-		}
-	}
-	return strings.Join(parts, " ")
+	stepLabel := steps[int(m.step)]
+	return fmt.Sprintf("%s %s",
+		Styles.WizardProgress.Render(fmt.Sprintf("Step %d of %d", m.step+1, len(steps))),
+		Styles.WizardStep.Render("• "+stepLabel),
+	)
 }
 
 func (m *CheckWizard) renderStep() string {
@@ -190,24 +260,37 @@ func (m *CheckWizard) renderPathStep() string {
 	}
 
 	for i, opt := range options {
-		cursor := "  "
+		cursor := " "
 		if m.stepCursor == i {
-			cursor = "❯"
+			cursor = cursorGlyph()
 			s += Styles.MenuItemSelected.Render(fmt.Sprintf("%s %s", cursor, opt.label))
 		} else {
 			s += Styles.MenuItem.Render(fmt.Sprintf("%s %s", cursor, opt.label))
 		}
-		s += "\n"
-		s += Styles.MenuDescription.Render(fmt.Sprintf("   %s", opt.desc))
-		s += "\n"
+		s += "\n" + Styles.MenuDescription.Render(fmt.Sprintf("  %s", opt.desc)) + "\n"
 	}
 
 	if m.stepCursor == 0 {
 		m.path = "."
 	}
 
-	s += "\n"
-	s += Styles.Info.Render(fmt.Sprintf("Selected: %s", m.path))
+	if m.stepCursor == 1 {
+		s += "\n"
+		s += Styles.Label.Render("Path")
+		s += "\n"
+		if m.pathInputActive() {
+			s += Styles.InputFocused.Render(m.pathInput.View())
+		} else {
+			s += Styles.Input.Render(m.pathInput.View())
+		}
+	}
+
+	s += "\n\n"
+	selected := m.path
+	if m.stepCursor == 1 && strings.TrimSpace(m.pathInput.Value()) != "" {
+		selected = m.pathInput.Value()
+	}
+	s += Styles.Info.Render(fmt.Sprintf("Selected: %s", selected))
 	return s
 }
 
@@ -226,16 +309,14 @@ func (m *CheckWizard) renderPlatformStep() string {
 	}
 
 	for i, opt := range options {
-		cursor := "  "
+		cursor := " "
 		if m.stepCursor == i {
-			cursor = "❯"
+			cursor = cursorGlyph()
 			s += Styles.MenuItemSelected.Render(fmt.Sprintf("%s %s", cursor, opt.label))
 		} else {
 			s += Styles.MenuItem.Render(fmt.Sprintf("%s %s", cursor, opt.label))
 		}
-		s += "\n"
-		s += Styles.MenuDescription.Render(fmt.Sprintf("   %s", opt.desc))
-		s += "\n"
+		s += "\n" + Styles.MenuDescription.Render(fmt.Sprintf("  %s", opt.desc)) + "\n"
 	}
 
 	s += "\n"
@@ -260,16 +341,14 @@ func (m *CheckWizard) renderFormatStep() string {
 	}
 
 	for i, opt := range options {
-		cursor := "  "
+		cursor := " "
 		if m.stepCursor == i {
-			cursor = "❯"
+			cursor = cursorGlyph()
 			s += Styles.MenuItemSelected.Render(fmt.Sprintf("%s %s", cursor, opt.label))
 		} else {
 			s += Styles.MenuItem.Render(fmt.Sprintf("%s %s", cursor, opt.label))
 		}
-		s += "\n"
-		s += Styles.MenuDescription.Render(fmt.Sprintf("   %s", opt.desc))
-		s += "\n"
+		s += "\n" + Styles.MenuDescription.Render(fmt.Sprintf("  %s", opt.desc)) + "\n"
 	}
 
 	s += "\n"
@@ -292,16 +371,14 @@ func (m *CheckWizard) renderSeverityStep() string {
 	}
 
 	for i, opt := range options {
-		cursor := "  "
+		cursor := " "
 		if m.stepCursor == i {
-			cursor = "❯"
+			cursor = cursorGlyph()
 			s += Styles.MenuItemSelected.Render(fmt.Sprintf("%s %s", cursor, opt.label))
 		} else {
 			s += Styles.MenuItem.Render(fmt.Sprintf("%s %s", cursor, opt.label))
 		}
-		s += "\n"
-		s += Styles.MenuDescription.Render(fmt.Sprintf("   %s", opt.desc))
-		s += "\n"
+		s += "\n" + Styles.MenuDescription.Render(fmt.Sprintf("  %s", opt.desc)) + "\n"
 	}
 
 	s += "\n"
@@ -324,16 +401,14 @@ func (m *CheckWizard) renderAIStep() string {
 	}
 
 	for i, opt := range options {
-		cursor := "  "
+		cursor := " "
 		if m.stepCursor == i {
-			cursor = "❯"
+			cursor = cursorGlyph()
 			s += Styles.MenuItemSelected.Render(fmt.Sprintf("%s %s", cursor, opt.label))
 		} else {
 			s += Styles.MenuItem.Render(fmt.Sprintf("%s %s", cursor, opt.label))
 		}
-		s += "\n"
-		s += Styles.MenuDescription.Render(fmt.Sprintf("   %s", opt.desc))
-		s += "\n"
+		s += "\n" + Styles.MenuDescription.Render(fmt.Sprintf("  %s", opt.desc)) + "\n"
 	}
 
 	s += "\n"
@@ -353,6 +428,17 @@ func (m *CheckWizard) renderConfirmStep() string {
 	s += "\n\n"
 
 	s += Styles.MenuDescription.Render("Configuration Summary:")
+	s += "\n\n"
+
+	summary := fmt.Sprintf("%s • %s • %s • %s • %s",
+		m.path,
+		strings.Title(m.platform),
+		strings.Title(m.format),
+		strings.Title(m.severity),
+		strings.Title(m.aiMode),
+	)
+	s += Styles.Info.Render("Summary: ")
+	s += Styles.MenuItem.Render(summary)
 	s += "\n\n"
 
 	s += Styles.MenuItem.Render(fmt.Sprintf("  Path:     %s", m.path))
@@ -375,9 +461,9 @@ func (m *CheckWizard) renderConfirmStep() string {
 	}
 
 	for i, opt := range options {
-		cursor := "  "
+		cursor := " "
 		if m.stepCursor == i {
-			cursor = "❯"
+			cursor = cursorGlyph()
 			s += Styles.MenuItemSelected.Render(fmt.Sprintf("%s %s", cursor, opt.label))
 		} else {
 			s += Styles.MenuItem.Render(fmt.Sprintf("%s %s", cursor, opt.label))
@@ -414,7 +500,7 @@ func NewRunCheckScreen(path, platform, format, severity, aiMode string) *RunChec
 }
 
 func (m *RunCheckScreen) Init() tea.Cmd {
-	return tickCmd()
+	return tea.Batch(tickCmd(), runCheckCmd(m.path, m.platform, m.format, m.severity, m.aiMode))
 }
 
 func tickCmd() tea.Cmd {
@@ -426,6 +512,7 @@ func tickCmd() tea.Cmd {
 type tickMsg struct{}
 
 type outputMsg struct{ output string }
+type runCheckErrorMsg struct{ err error }
 
 func (m *RunCheckScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
@@ -437,9 +524,12 @@ func (m *RunCheckScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case outputMsg:
 		m.done = true
 		m.output = msg.output
+	case runCheckErrorMsg:
+		m.done = true
+		m.output = fmt.Sprintf("Error: %v", msg.err)
 	case tea.KeyMsg:
-		if key.Matches(msg, menuKeys.Enter) || key.Matches(msg, menuKeys.Quit) {
-			return NewMenuModel(), nil
+		if m.done {
+			return transition(NewMenuModel())
 		}
 	}
 	return m, nil
@@ -447,13 +537,16 @@ func (m *RunCheckScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *RunCheckScreen) View() string {
 	var s string
-	s += Styles.Header.Render("Running Compliance Check")
+	s += renderHeader("Running Compliance Check")
 	s += "\n\n"
 	s += Styles.Subtitle.Render(fmt.Sprintf("Analyzing: %s", m.path))
 	s += "\n\n"
 
 	if !m.done {
-		spinner := []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠸"}
+		spinner := []string{"-", "\\", "|", "/"}
+		if supportsUnicode() {
+			spinner = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠸"}
+		}
 		frame := spinner[m.tick%len(spinner)]
 		s += Styles.Info.Render(fmt.Sprintf("%s Running compliance checks...", frame))
 		s += "\n\n"
@@ -469,8 +562,8 @@ func (m *RunCheckScreen) View() string {
 		s += "\n\n"
 	}
 
-	s += Styles.Footer.Render("Press any key to return to menu")
-	return s
+	s += renderFooter("Press any key to return to menu")
+	return padToWidth(s)
 }
 
 type MessageScreen struct {
@@ -497,7 +590,7 @@ func (m *MessageScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, menuKeys.Enter):
-			m.done = true
+			return transition(NewMenuModel())
 		case key.Matches(msg, menuKeys.Quit):
 			return m, tea.Quit
 		}
@@ -507,12 +600,12 @@ func (m *MessageScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *MessageScreen) View() string {
 	var s string
-	s += Styles.Header.Render(m.message)
+	s += renderHeader(m.message)
 	s += "\n\n"
 	s += Styles.Subtitle.Render(m.subtitle)
 	s += "\n\n"
-	s += Styles.Footer.Render("Enter to continue • q Quit")
-	return s
+	s += renderFooter("Enter to continue • q Quit")
+	return padToWidth(s)
 }
 
 func NewChecksScreen() *MessageScreen {

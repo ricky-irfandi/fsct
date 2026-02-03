@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"text/template"
 	"time"
 
@@ -225,38 +226,43 @@ func (f *HTMLFormatter) GetExtension() string {
 type ConsoleFormatter struct{}
 
 func (f *ConsoleFormatter) Format(results []report.Finding, summary report.Summary) ([]byte, error) {
-	output := fmt.Sprintf("\nFSCT Report\n==========\n\n")
-	output += fmt.Sprintf("Summary:\n")
-	output += fmt.Sprintf("  High:    %d\n", summary.High)
-	output += fmt.Sprintf("  Warning: %d\n", summary.Warning)
-	output += fmt.Sprintf("  Info:    %d\n", summary.Info)
-	output += fmt.Sprintf("  Passed:  %d\n\n", summary.Passed)
+	output := "FSCT Report\n"
+	output += "────────────\n"
+	output += fmt.Sprintf("Summary  High %d  |  Warning %d  |  Info %d  |  Passed %d\n\n",
+		summary.High,
+		summary.Warning,
+		summary.Info,
+		summary.Passed,
+	)
 
 	if len(results) == 0 {
-		output += fmt.Sprintf("No issues found! All checks passed.\n")
+		output += "No issues found. All checks passed.\n"
 		return []byte(output), nil
 	}
 
-	output += fmt.Sprintf("Findings:\n")
+	output += "Findings\n"
+	output += "────────\n"
 	for _, finding := range results {
-		icon := "ℹ"
+		icon := "•"
 		if finding.Severity == report.SeverityHigh {
-			icon = "✗"
+			icon = "×"
 		} else if finding.Severity == report.SeverityWarning {
-			icon = "⚠"
+			icon = "!"
 		}
-		output += fmt.Sprintf("\n[%s] %s (%s)\n", icon, finding.ID, finding.Severity)
-		output += fmt.Sprintf("    Title: %s\n", finding.Title)
-		output += fmt.Sprintf("    Message: %s\n", finding.Message)
+		output += fmt.Sprintf("\n%s %s  (%s)\n", icon, finding.ID, strings.ToUpper(string(finding.Severity)))
+		output += fmt.Sprintf("  %s\n", finding.Title)
+		if finding.Message != "" {
+			output += fmt.Sprintf("  %s\n", finding.Message)
+		}
 		if finding.File != "" {
-			output += fmt.Sprintf("    File: %s", finding.File)
+			output += fmt.Sprintf("  %s", finding.File)
 			if finding.Line > 0 {
 				output += fmt.Sprintf(":%d", finding.Line)
 			}
 			output += "\n"
 		}
 		if finding.Suggestion != "" {
-			output += fmt.Sprintf("    Suggestion: %s\n", finding.Suggestion)
+			output += fmt.Sprintf("  Suggestion: %s\n", finding.Suggestion)
 		}
 	}
 

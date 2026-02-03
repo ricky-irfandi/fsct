@@ -5,21 +5,21 @@ import (
 )
 
 const (
-	ColorBackground     = "#1a1a1a"
-	ColorSurface        = "#24283b"
-	ColorSurfaceLight   = "#2a2f45"
-	ColorPrimary        = "#d4a574"
-	ColorPrimaryLight   = "#e6b88a"
-	ColorPrimaryDark    = "#b8935f"
-	ColorSecondary      = "#7aa2f7"
-	ColorSecondaryLight = "#8ab4f7"
-	ColorSuccess        = "#9ece6a"
-	ColorWarning        = "#e0af68"
-	ColorError          = "#f7768e"
-	ColorInfo           = "#7aa2f7"
-	ColorTextPrimary    = "#c0caf5"
-	ColorTextSecondary  = "#565f89"
-	ColorTextMuted      = "#414868"
+	ColorBackground     = "#0f1115"
+	ColorSurface        = "#161a21"
+	ColorSurfaceLight   = "#1c212b"
+	ColorPrimary        = "#4c9ffe"
+	ColorPrimaryLight   = "#79b6ff"
+	ColorPrimaryDark    = "#3478d4"
+	ColorSecondary      = "#c8d0e0"
+	ColorSecondaryLight = "#e3e8f3"
+	ColorSuccess        = "#8ccf7e"
+	ColorWarning        = "#f1c27d"
+	ColorError          = "#ff6b6b"
+	ColorInfo           = "#4c9ffe"
+	ColorTextPrimary    = "#e6eaf2"
+	ColorTextSecondary  = "#a9b1c5"
+	ColorTextMuted      = "#6b7280"
 )
 
 var Styles = struct {
@@ -59,7 +59,7 @@ var Styles = struct {
 
 	Header: lipgloss.NewStyle().
 		Background(lipgloss.Color(ColorSurface)).
-		Foreground(lipgloss.Color(ColorSecondary)).
+		Foreground(lipgloss.Color(ColorTextPrimary)).
 		Padding(0, 2).
 		Bold(true).
 		BorderStyle(lipgloss.NormalBorder()).
@@ -78,40 +78,31 @@ var Styles = struct {
 		Padding(1, 0),
 
 	MenuItem: lipgloss.NewStyle().
-		PaddingLeft(2).
-		PaddingRight(2).
-		PaddingTop(1).
-		PaddingBottom(1).
+		PaddingLeft(1).
+		PaddingRight(1).
 		Foreground(lipgloss.Color(ColorTextPrimary)),
 
 	MenuItemSelected: lipgloss.NewStyle().
-		PaddingLeft(2).
-		PaddingRight(2).
-		PaddingTop(1).
-		PaddingBottom(1).
-		Foreground(lipgloss.Color(ColorBackground)).
-		Background(lipgloss.Color(ColorPrimary)).
+		PaddingLeft(1).
+		PaddingRight(1).
+		Foreground(lipgloss.Color(ColorPrimary)).
 		Bold(true),
 
 	MenuItemActive: lipgloss.NewStyle().
-		PaddingLeft(2).
-		PaddingRight(2).
-		PaddingTop(1).
-		PaddingBottom(1).
-		Foreground(lipgloss.Color(ColorBackground)).
-		Background(lipgloss.Color(ColorPrimaryDark)).
+		PaddingLeft(1).
+		PaddingRight(1).
+		Foreground(lipgloss.Color(ColorPrimaryDark)).
 		Bold(true),
 
 	MenuDescription: lipgloss.NewStyle().
-		PaddingLeft(4).
-		Foreground(lipgloss.Color(ColorTextSecondary)).
-		Italic(true),
+		PaddingLeft(3).
+		Foreground(lipgloss.Color(ColorTextSecondary)),
 
 	Wizard: lipgloss.NewStyle().
 		Padding(1, 2),
 
 	WizardStep: lipgloss.NewStyle().
-		Foreground(lipgloss.Color(ColorSecondary)).
+		Foreground(lipgloss.Color(ColorTextPrimary)).
 		Bold(true),
 
 	WizardProgress: lipgloss.NewStyle().
@@ -134,7 +125,7 @@ var Styles = struct {
 		Foreground(lipgloss.Color(ColorTextPrimary)).
 		Padding(0, 1).
 		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color(ColorSecondary)),
+		BorderForeground(lipgloss.Color(ColorPrimary)),
 
 	Label: lipgloss.NewStyle().
 		Foreground(lipgloss.Color(ColorTextPrimary)).
@@ -159,7 +150,7 @@ var Styles = struct {
 
 	ButtonPrimary: lipgloss.NewStyle().
 		Background(lipgloss.Color(ColorPrimary)).
-		Foreground(lipgloss.Color(ColorBackground)).
+		Foreground(lipgloss.Color(ColorSurface)).
 		Padding(0, 2).
 		Bold(true),
 
@@ -183,14 +174,14 @@ var Styles = struct {
 		Bold(true),
 
 	Info: lipgloss.NewStyle().
-		Foreground(lipgloss.Color(ColorInfo)).
+		Foreground(lipgloss.Color(ColorPrimary)).
 		Bold(true),
 
 	Help: lipgloss.NewStyle().
 		Foreground(lipgloss.Color(ColorTextSecondary)),
 
 	Key: lipgloss.NewStyle().
-		Foreground(lipgloss.Color(ColorSecondary)).
+		Foreground(lipgloss.Color(ColorPrimary)).
 		Bold(true),
 
 	Separator: lipgloss.NewStyle().
@@ -203,5 +194,5 @@ var Styles = struct {
 
 	Subtitle: lipgloss.NewStyle().
 		Foreground(lipgloss.Color(ColorTextSecondary)).
-		Italic(true),
+		Italic(false),
 }

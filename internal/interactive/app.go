@@ -2,6 +2,7 @@ package interactive
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 type Screen interface {
@@ -39,6 +40,11 @@ func (m AppModel) Init() tea.Cmd {
 }
 
 func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if size, ok := msg.(tea.WindowSizeMsg); ok {
+		m.width = size.Width
+		m.height = size.Height
+		setScreenSize(size.Width)
+	}
 	if key, ok := msg.(tea.KeyMsg); ok {
 		if key.Type == tea.KeyCtrlC || key.Type == tea.KeyEsc {
 			return m, tea.Quit
@@ -51,9 +57,19 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m AppModel) View() string {
-	return m.screen.View()
+	if m.width <= 0 {
+		return m.screen.View()
+	}
+	return lipgloss.NewStyle().Width(m.width).Render(m.screen.View())
 }
 
 func NewMainMenuScreen() Screen {
 	return NewMenuModel()
+}
+
+func transition(next Screen) (tea.Model, tea.Cmd) {
+	if next == nil {
+		return nil, nil
+	}
+	return next, next.Init()
 }
