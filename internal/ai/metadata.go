@@ -32,8 +32,8 @@ type ComplianceMetadata struct {
 	InfoCount       int `json:"info_count"`
 
 	// Platform versions (safe)
-	AndroidTargetSDK int    `json:"android_target_sdk,omitempty"`
-	AndroidMinSDK    int    `json:"android_min_sdk,omitempty"`
+	AndroidTargetSDK    int    `json:"android_target_sdk,omitempty"`
+	AndroidMinSDK       int    `json:"android_min_sdk,omitempty"`
 	IOSDeploymentTarget string `json:"ios_deployment_target,omitempty"`
 
 	// Finding summaries (safe - minimal info)
@@ -97,15 +97,15 @@ type AppConfig struct {
 
 // SecurityFlags contains security-related boolean flags
 type SecurityFlags struct {
-	IsDebuggable        bool `json:"is_debuggable"`
-	AllowsBackup        bool `json:"allows_backup"`
-	HasInsecureHTTP     bool `json:"has_insecure_http"`
-	HasHardcodedKeys    bool `json:"has_hardcoded_keys"`
-	MissingEncryption   bool `json:"missing_encryption_decl"`
+	IsDebuggable      bool `json:"is_debuggable"`
+	AllowsBackup      bool `json:"allows_backup"`
+	HasInsecureHTTP   bool `json:"has_insecure_http"`
+	HasHardcodedKeys  bool `json:"has_hardcoded_keys"`
+	MissingEncryption bool `json:"missing_encryption_decl"`
 }
 
 // ExtractMetadata extracts privacy-safe metadata from a project
-func ExtractMetadata(project *checker.Project, findings []report.Finding) *ComplianceMetadata {
+func ExtractMetadata(project *checker.Project, findings []report.Finding, totalChecks int) *ComplianceMetadata {
 	meta := &ComplianceMetadata{
 		Findings:           make([]FindingMeta, 0, len(findings)),
 		AndroidPermissions: make([]string, 0),
@@ -121,7 +121,7 @@ func ExtractMetadata(project *checker.Project, findings []report.Finding) *Compl
 	meta.extractFindings(findings)
 
 	// Calculate scores
-	meta.calculateScores(findings)
+	meta.calculateScores(findings, totalChecks)
 
 	// Extract platform info
 	meta.extractPlatformInfo(project)
@@ -190,8 +190,15 @@ func (m *ComplianceMetadata) extractFindings(findings []report.Finding) {
 }
 
 // calculateScores calculates compliance scores
-func (m *ComplianceMetadata) calculateScores(findings []report.Finding) {
-	m.TotalChecks = 83 // Total number of checks in the system
+func (m *ComplianceMetadata) calculateScores(findings []report.Finding, totalChecks int) {
+	if totalChecks <= 0 {
+		totalChecks = len(findings)
+	}
+	if totalChecks < len(findings) {
+		totalChecks = len(findings)
+	}
+
+	m.TotalChecks = totalChecks
 	m.PassedChecks = m.TotalChecks - len(findings)
 
 	// Simple scoring: base 100, deduct for issues
@@ -310,17 +317,22 @@ func (m *ComplianceMetadata) extractFeatures(project *checker.Project) {
 		}
 	}
 
-	// Detect from findings
+	// Detect policy signals from findings (absence implies present when checks ran)
+	missingPolicy := map[string]bool{}
 	for _, finding := range m.Findings {
 		switch finding.ID {
 		case "POL-003":
-			m.Features.HasDataDeletion = true
+			missingPolicy["POL-003"] = true
 		case "POL-001":
-			m.Features.HasPrivacyPolicy = true
+			missingPolicy["POL-001"] = true
 		case "POL-002":
-			m.Features.HasTermsOfService = true
+			missingPolicy["POL-002"] = true
 		}
 	}
+
+	m.Features.HasDataDeletion = !missingPolicy["POL-003"]
+	m.Features.HasPrivacyPolicy = !missingPolicy["POL-001"]
+	m.Features.HasTermsOfService = !missingPolicy["POL-002"]
 }
 
 // extractConfig extracts configuration flags

@@ -12,11 +12,13 @@ import (
 
 // Check represents an AI-powered compliance check
 type Check struct {
-	id       string
-	name     string
-	client   *aipkg.Client
-	prompts  *SystemPrompts
-	category string
+	id           string
+	name         string
+	client       *aipkg.Client
+	prompts      *SystemPrompts
+	category     string
+	baseFindings []report.Finding
+	totalChecks  int
 }
 
 // NewCheck creates a new AI check
@@ -45,11 +47,16 @@ func (c *Check) Category() string {
 	return c.category
 }
 
+// SetContext provides static findings context for AI analysis.
+func (c *Check) SetContext(findings []report.Finding, totalChecks int) {
+	c.baseFindings = findings
+	c.totalChecks = totalChecks
+}
+
 // Run executes the AI check
 func (c *Check) Run(project *checker.Project) []report.Finding {
 	// Extract metadata
-	findings := []report.Finding{}
-	metadata := aipkg.ExtractMetadata(project, findings)
+	metadata := aipkg.ExtractMetadata(project, c.baseFindings, c.totalChecks)
 
 	// Get system prompt based on check type
 	systemPrompt := c.getSystemPrompt()

@@ -1,6 +1,7 @@
 # Check Categories
 
-FSCT organizes its 98 checks into 10 categories based on the type of compliance requirement they validate.
+FSCT organizes its 38 core checks into 5 categories based on store review compliance requirements.
+Optional AI and reviewer checks can be enabled when configured.
 
 ## Overview
 
@@ -8,14 +9,9 @@ FSCT organizes its 98 checks into 10 categories based on the type of compliance 
 |----------|-----------|--------|----------|
 | Android | AND- | 12 | High, Warning |
 | iOS | IOS- | 12 | High, Warning |
-| Flutter | FLT- | 8 | High, Warning |
+| Flutter | FLT- | 4 | High, Warning |
 | Security | SEC- | 5 | Critical, High |
 | Policy | POL- | 5 | High, Warning |
-| Code Quality | COD- | 8 | Warning |
-| Testing | TST- | 6 | Warning, Info |
-| Linting | LINT- | 7 | Warning, Info |
-| Documentation | DOC- | 6 | Warning, Info |
-| Performance | PERF- | 6 | Warning, Info |
 
 ---
 
@@ -151,7 +147,7 @@ These checks validate compliance with Apple App Store requirements.
 
 ---
 
-## Flutter Checks (FLT-001 to FLT-008)
+## Flutter Checks (Store-Critical)
 
 Flutter-specific configuration and best practices.
 
@@ -159,11 +155,6 @@ Flutter-specific configuration and best practices.
 - **Severity**: HIGH
 - **Requirement**: Constrain Flutter SDK version
 - **Build**: Reproducible builds
-
-### FLT-002: Material Design 3
-- **Severity**: INFO
-- **Recommendation**: Enable Material 3
-- **Modern UI**: Latest Material Design features
 
 ### FLT-003: Minimum SDK Version
 - **Severity**: HIGH
@@ -179,21 +170,6 @@ Flutter-specific configuration and best practices.
 - **Severity**: WARNING
 - **Requirement**: Specify version in pubspec.yaml
 - **Tracking**: Semantic versioning
-
-### FLT-006: Dependency Constraints
-- **Severity**: WARNING
-- **Recommendation**: Use version constraints (^)
-- **Stability**: Reproducible builds
-
-### FLT-007: Deprecated Packages
-- **Severity**: HIGH
-- **Recommendation**: Avoid deprecated FlutterFire packages
-- **Migration**: Use latest FlutterFire plugins
-
-### FLT-008: Project Structure
-- **Severity**: INFO
-- **Recommendation**: Standard Flutter project layout
-- **Maintainability**: lib/, assets/, test/
 
 ---
 

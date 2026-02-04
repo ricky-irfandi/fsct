@@ -38,7 +38,7 @@ func MainMenuItems() []MenuItem {
 		{ID: "check", Label: "Run Compliance Check", Icon: "🚀", Description: "Analyze your Flutter project", Action: func() (tea.Model, tea.Cmd) {
 			return transition(NewCheckWizard())
 		}},
-		{ID: "checks", Label: "View Available Checks", Icon: "📋", Description: "Browse all 98 compliance checks", Action: func() (tea.Model, tea.Cmd) {
+		{ID: "checks", Label: "View Available Checks", Icon: "📋", Description: "Browse all available compliance checks", Action: func() (tea.Model, tea.Cmd) {
 			return transition(NewChecksScreen())
 		}},
 		{ID: "checklist", Label: "Generate Pre-Submit Checklist", Icon: "✅", Description: "Store submission readiness", Action: func() (tea.Model, tea.Cmd) {

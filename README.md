@@ -8,7 +8,8 @@ A comprehensive static analysis tool for Flutter mobile applications to ensure c
 
 ## Features
 
-- **98 Compliance Checks** across 10 categories
+- **38 Core Compliance Checks** focused on store review compliance
+- **Optional AI & Reviewer Checks** when configured
 - **Multi-platform Support** - Android, iOS, and Flutter
 - **Multiple Output Formats** - Console, JSON, YAML, HTML
 - **CI/CD Ready** - Exit codes for automated pipelines
@@ -64,14 +65,9 @@ Flags:
 |----------|-------------|--------|
 | Android | Google Play Store requirements | 12 |
 | iOS | Apple App Store requirements | 12 |
-| Flutter | Flutter-specific best practices | 8 |
+| Flutter | Store-critical Flutter config | 4 |
 | Security | Security vulnerabilities | 5 |
 | Policy | Policy compliance | 5 |
-| Code Quality | Code maintainability | 8 |
-| Testing | Test coverage | 6 |
-| Linting | Linter configuration | 7 |
-| Documentation | Project documentation | 6 |
-| Performance | Performance optimization | 6 |
 
 ### Android Checks (AND-001 to AND-012)
 
@@ -103,16 +99,12 @@ Flags:
 - **IOS-011**: Encryption Declaration
 - **IOS-012**: Deployment Target
 
-### Flutter Checks (FLT-001 to FLT-008)
+### Flutter Checks (Store-Critical)
 
 - **FLT-001**: Flutter SDK Version Constraint
-- **FLT-002**: Material Design 3
 - **FLT-003**: Min SDK Version
 - **FLT-004**: Package Name Validation
 - **FLT-005**: Version Management
-- **FLT-006**: Dependency Constraints
-- **FLT-007**: Deprecated Packages
-- **FLT-008**: Project Structure
 
 ### Security Checks (SEC-001 to SEC-005)
 

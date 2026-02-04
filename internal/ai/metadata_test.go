@@ -15,13 +15,13 @@ func TestExtractMetadata(t *testing.T) {
 			Version:     "1.0.0+1",
 			Description: "A test Flutter application",
 			Dependencies: map[string]string{
-				"flutter":     "sdk",
-				"http":        "^1.0.0",
-				"camera":      "^0.10.0",
-				"geolocator":  "^10.0.0",
+				"flutter":    "sdk",
+				"http":       "^1.0.0",
+				"camera":     "^0.10.0",
+				"geolocator": "^10.0.0",
 			},
 			DevDependencies: map[string]string{
-				"flutter_test": "sdk",
+				"flutter_test":  "sdk",
 				"flutter_lints": "^3.0.0",
 			},
 			HasLinter:       true,
@@ -38,7 +38,7 @@ func TestExtractMetadata(t *testing.T) {
 				"android.permission.ACCESS_FINE_LOCATION",
 				"android.permission.INTERNET",
 			},
-			Debuggable: false,
+			Debuggable:  false,
 			AllowBackup: true,
 		},
 		InfoPlist: &checker.InfoPlistInfo{
@@ -72,7 +72,7 @@ func TestExtractMetadata(t *testing.T) {
 		},
 	}
 
-	meta := ExtractMetadata(project, findings)
+	meta := ExtractMetadata(project, findings, 38)
 
 	// Test basic info
 	if meta.AppName != "test_app" {
@@ -84,8 +84,8 @@ func TestExtractMetadata(t *testing.T) {
 	}
 
 	// Test scores
-	if meta.TotalChecks != 83 {
-		t.Errorf("expected 83 total checks, got %d", meta.TotalChecks)
+	if meta.TotalChecks != 38 {
+		t.Errorf("expected 38 total checks, got %d", meta.TotalChecks)
 	}
 
 	if meta.HighCount != 2 {
@@ -167,8 +167,8 @@ func TestExtractMetadata(t *testing.T) {
 func TestExtractMetadataPrivacy(t *testing.T) {
 	project := &checker.Project{
 		Pubspec: &checker.PubspecInfo{
-			Name:    "test_app",
-			Version: "1.0.0",
+			Name:        "test_app",
+			Version:     "1.0.0",
 			Description: "This app contains password fields and secret keys",
 		},
 	}
@@ -184,7 +184,7 @@ func TestExtractMetadataPrivacy(t *testing.T) {
 		},
 	}
 
-	meta := ExtractMetadata(project, findings)
+	meta := ExtractMetadata(project, findings, 38)
 
 	// Verify file path is NOT in metadata
 	for _, f := range meta.Findings {
@@ -303,14 +303,14 @@ func TestEmptyProject(t *testing.T) {
 	project := checker.NewProject("/test/path")
 	findings := []report.Finding{}
 
-	meta := ExtractMetadata(project, findings)
+	meta := ExtractMetadata(project, findings, 38)
 
 	if meta.AppName == "" {
 		t.Error("should have default app name from path")
 	}
 
-	if meta.TotalChecks != 83 {
-		t.Errorf("expected 83 total checks, got %d", meta.TotalChecks)
+	if meta.TotalChecks != 38 {
+		t.Errorf("expected 38 total checks, got %d", meta.TotalChecks)
 	}
 
 	if meta.ComplianceScore != 100 {

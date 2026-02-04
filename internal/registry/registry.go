@@ -5,16 +5,11 @@ import (
 	"github.com/ricky-irfandi/fsct/internal/checker"
 	aichecks "github.com/ricky-irfandi/fsct/internal/checker/ai"
 	"github.com/ricky-irfandi/fsct/internal/checker/android"
-	"github.com/ricky-irfandi/fsct/internal/checker/code"
-	"github.com/ricky-irfandi/fsct/internal/checker/docs"
 	"github.com/ricky-irfandi/fsct/internal/checker/flutter"
 	"github.com/ricky-irfandi/fsct/internal/checker/ios"
-	"github.com/ricky-irfandi/fsct/internal/checker/linting"
-	"github.com/ricky-irfandi/fsct/internal/checker/perf"
 	"github.com/ricky-irfandi/fsct/internal/checker/policy"
 	"github.com/ricky-irfandi/fsct/internal/checker/reviewer"
 	"github.com/ricky-irfandi/fsct/internal/checker/security"
-	"github.com/ricky-irfandi/fsct/internal/checker/testing"
 	"github.com/ricky-irfandi/fsct/internal/config"
 )
 
@@ -34,11 +29,6 @@ func (r *CheckerRegistry) RegisterAll() {
 	r.registerFlutterChecks()
 	r.registerSecurityChecks()
 	r.registerPolicyChecks()
-	r.registerCodeChecks()
-	r.registerTestingChecks()
-	r.registerLintingChecks()
-	r.registerDocsChecks()
-	r.registerPerfChecks()
 }
 
 func (r *CheckerRegistry) registerAndroidChecks() {
@@ -73,13 +63,9 @@ func (r *CheckerRegistry) registerIOSChecks() {
 
 func (r *CheckerRegistry) registerFlutterChecks() {
 	r.checks["FLT-001"] = &flutter.FlutterSDKVersionCheck{}
-	r.checks["FLT-002"] = &flutter.Material3Check{}
 	r.checks["FLT-003"] = &flutter.MinSDKVersionCheck{}
 	r.checks["FLT-004"] = &flutter.PackageNameCheck{}
 	r.checks["FLT-005"] = &flutter.VersionCheck{}
-	r.checks["FLT-006"] = &flutter.DependencyConstraintCheck{}
-	r.checks["FLT-007"] = &flutter.DeprecatedPackageCheck{}
-	r.checks["FLT-008"] = &flutter.ProjectStructureCheck{}
 }
 
 func (r *CheckerRegistry) registerSecurityChecks() {
@@ -96,54 +82,6 @@ func (r *CheckerRegistry) registerPolicyChecks() {
 	r.checks["POL-003"] = &policy.DataDeletionCheck{}
 	r.checks["POL-004"] = &policy.LogoutCheck{}
 	r.checks["POL-005"] = &policy.AccountRecoveryCheck{}
-}
-
-func (r *CheckerRegistry) registerCodeChecks() {
-	r.checks["COD-001"] = &code.FileLengthCheck{}
-	r.checks["COD-002"] = &code.ClassLengthCheck{}
-	r.checks["COD-003"] = &code.MethodComplexityCheck{}
-	r.checks["COD-004"] = &code.NamingConventionCheck{}
-	r.checks["COD-005"] = &code.ImportOrganizationCheck{}
-	r.checks["COD-006"] = &code.CommentQualityCheck{}
-	r.checks["COD-007"] = &code.CyclomaticComplexityCheck{}
-	r.checks["COD-008"] = &code.DuplicateCodeCheck{}
-}
-
-func (r *CheckerRegistry) registerTestingChecks() {
-	r.checks["TST-001"] = &testing.TestDirectoryCheck{}
-	r.checks["TST-002"] = &testing.TestFileNamingCheck{}
-	r.checks["TST-003"] = &testing.TestCoverageCheck{}
-	r.checks["TST-004"] = &testing.WidgetTestCheck{}
-	r.checks["TST-005"] = &testing.MockDependenciesCheck{}
-	r.checks["TST-006"] = &testing.GoldenTestCheck{}
-}
-
-func (r *CheckerRegistry) registerLintingChecks() {
-	r.checks["LINT-001"] = &linting.AnalysisOptionsCheck{}
-	r.checks["LINT-002"] = &linting.LinterRulesCheck{}
-	r.checks["LINT-003"] = &linting.StrongModeCheck{}
-	r.checks["LINT-004"] = &linting.FileNamingCheck{}
-	r.checks["LINT-005"] = &linting.StyleGuideCheck{}
-	r.checks["LINT-006"] = &linting.PublicAPIDocCheck{}
-	r.checks["LINT-007"] = &linting.IgnoreCommentsCheck{}
-}
-
-func (r *CheckerRegistry) registerDocsChecks() {
-	r.checks["DOC-001"] = &docs.ReadmePresenceCheck{}
-	r.checks["DOC-002"] = &docs.ReadmeContentCheck{}
-	r.checks["DOC-003"] = &docs.ChangelogPresenceCheck{}
-	r.checks["DOC-004"] = &docs.LicensePresenceCheck{}
-	r.checks["DOC-005"] = &docs.ApiDocumentationCheck{}
-	r.checks["DOC-006"] = &docs.CodeCommentsCheck{}
-}
-
-func (r *CheckerRegistry) registerPerfChecks() {
-	r.checks["PERF-001"] = &perf.ConstConstructorCheck{}
-	r.checks["PERF-002"] = &perf.BuildOptimizationCheck{}
-	r.checks["PERF-003"] = &perf.ListBuilderCheck{}
-	r.checks["PERF-004"] = &perf.ImageOptimizationCheck{}
-	r.checks["PERF-005"] = &perf.StateManagementCheck{}
-	r.checks["PERF-006"] = &perf.DependencyOptimizationCheck{}
 }
 
 // RegisterAIChecks registers AI-powered checks if AI client is available
@@ -183,7 +121,6 @@ func (r *CheckerRegistry) Count() int {
 func (r *CheckerRegistry) GetCategories() []string {
 	return []string{
 		"Android", "iOS", "Flutter", "Security", "Policy",
-		"Code Quality", "Testing", "Linting", "Documentation", "Performance",
 		"AI Analysis", "Reviewer",
 	}
 }

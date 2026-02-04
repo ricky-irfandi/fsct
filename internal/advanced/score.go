@@ -7,15 +7,14 @@ import (
 )
 
 type SecurityScore struct {
-	Overall     float64 `json:"overall"`
-	Android     float64 `json:"android"`
-	iOS         float64 `json:"ios"`
-	Flutter     float64 `json:"flutter"`
-	Security    float64 `json:"security"`
-	Policy      float64 `json:"policy"`
-	CodeQuality float64 `json:"codeQuality"`
-	Grade       string  `json:"grade"`
-	Summary     string  `json:"summary"`
+	Overall  float64 `json:"overall"`
+	Android  float64 `json:"android"`
+	iOS      float64 `json:"ios"`
+	Flutter  float64 `json:"flutter"`
+	Security float64 `json:"security"`
+	Policy   float64 `json:"policy"`
+	Grade    string  `json:"grade"`
+	Summary  string  `json:"summary"`
 }
 
 type ScoreBreakdown struct {
@@ -28,12 +27,11 @@ type ScoreBreakdown struct {
 }
 
 const (
-	androidWeight     = 0.25
-	iosWeight         = 0.25
-	flutterWeight     = 0.15
-	securityWeight    = 0.20
-	policyWeight      = 0.10
-	codeQualityWeight = 0.05
+	androidWeight  = 0.25
+	iosWeight      = 0.25
+	flutterWeight  = 0.15
+	securityWeight = 0.20
+	policyWeight   = 0.15
 )
 
 func CalculateScore(findings []report.Finding, totalChecks int) *SecurityScore {
@@ -47,38 +45,38 @@ func CalculateScore(findings []report.Finding, totalChecks int) *SecurityScore {
 	grade := calculateGrade(overall)
 
 	return &SecurityScore{
-		Overall:     math.Round(overall*100) / 100,
-		Android:     math.Round(breakdown[0].Score*100) / 100,
-		iOS:         math.Round(breakdown[1].Score*100) / 100,
-		Flutter:     math.Round(breakdown[2].Score*100) / 100,
-		Security:    math.Round(breakdown[3].Score*100) / 100,
-		Policy:      math.Round(breakdown[4].Score*100) / 100,
-		CodeQuality: math.Round(breakdown[5].Score*100) / 100,
-		Grade:       grade,
-		Summary:     generateSummary(grade, overall),
+		Overall:  math.Round(overall*100) / 100,
+		Android:  math.Round(breakdown[0].Score*100) / 100,
+		iOS:      math.Round(breakdown[1].Score*100) / 100,
+		Flutter:  math.Round(breakdown[2].Score*100) / 100,
+		Security: math.Round(breakdown[3].Score*100) / 100,
+		Policy:   math.Round(breakdown[4].Score*100) / 100,
+		Grade:    grade,
+		Summary:  generateSummary(grade, overall),
 	}
 }
 
 func calculateBreakdown(findings []report.Finding) []ScoreBreakdown {
-	categoryCounts := make(map[string]int)
 	categoryFailed := make(map[string]int)
 
-	categories := []string{"Android", "iOS", "Flutter", "Security", "Policy", "Code Quality"}
+	categories := []string{"Android", "iOS", "Flutter", "Security", "Policy"}
 
 	for _, f := range findings {
 		cat := categorize(f.ID)
-		categoryCounts[cat]++
 		categoryFailed[cat]++
 	}
 
 	breakdown := make([]ScoreBreakdown, 0)
 
 	for _, cat := range categories {
-		passed := categoryCounts[cat] - categoryFailed[cat]
-		total := categoryCounts[cat]
+		total := getTotalChecksForCategory(cat)
+		passed := total - categoryFailed[cat]
+		if passed < 0 {
+			passed = 0
+		}
 		score := 1.0
 		if total > 0 {
-			score = float64(passed) / float64(getTotalChecksForCategory(cat))
+			score = float64(passed) / float64(total)
 		}
 
 		var weight float64
@@ -93,8 +91,6 @@ func calculateBreakdown(findings []report.Finding) []ScoreBreakdown {
 			weight = securityWeight
 		case "Policy":
 			weight = policyWeight
-		case "Code Quality":
-			weight = codeQualityWeight
 		}
 
 		breakdown = append(breakdown, ScoreBreakdown{
@@ -122,12 +118,6 @@ func categorize(checkID string) string {
 		return "Security"
 	case len(checkID) >= 4 && checkID[:3] == "POL":
 		return "Policy"
-	case len(checkID) >= 4 && checkID[:3] == "COD" ||
-		len(checkID) >= 4 && checkID[:3] == "TST" ||
-		len(checkID) >= 4 && checkID[:3] == "LIN" ||
-		len(checkID) >= 4 && checkID[:3] == "DOC" ||
-		len(checkID) >= 4 && checkID[:3] == "PER":
-		return "Code Quality"
 	default:
 		return "Other"
 	}
@@ -140,13 +130,11 @@ func getTotalChecksForCategory(category string) int {
 	case "iOS":
 		return 12
 	case "Flutter":
-		return 8
+		return 4
 	case "Security":
 		return 5
 	case "Policy":
 		return 5
-	case "Code Quality":
-		return 33
 	default:
 		return 1
 	}

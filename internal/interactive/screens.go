@@ -609,7 +609,7 @@ func (m *MessageScreen) View() string {
 }
 
 func NewChecksScreen() *MessageScreen {
-	return NewMessageScreen("Available Checks", "Lists all 98 compliance checks")
+	return NewMessageScreen("Available Checks", "Lists all available compliance checks")
 }
 
 func NewChecklistScreen() *MessageScreen {

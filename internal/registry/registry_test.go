@@ -21,9 +21,9 @@ func TestRegisterAll(t *testing.T) {
 	reg := NewRegistry()
 	reg.RegisterAll()
 
-	// Should have 75 checks (no AI checks yet)
-	if reg.Count() != 75 {
-		t.Errorf("expected 75 checks, got %d", reg.Count())
+	// Should have 38 checks (no AI checks yet)
+	if reg.Count() != 38 {
+		t.Errorf("expected 38 checks, got %d", reg.Count())
 	}
 }
 
@@ -37,9 +37,9 @@ func TestRegisterAIChecks(t *testing.T) {
 	// Register AI checks
 	reg.RegisterAIChecks(client)
 
-	// Should now have 80 checks (75 + 5 AI)
-	if reg.Count() != 80 {
-		t.Errorf("expected 80 checks after AI registration, got %d", reg.Count())
+	// Should now have 43 checks (38 + 5 AI)
+	if reg.Count() != 43 {
+		t.Errorf("expected 43 checks after AI registration, got %d", reg.Count())
 	}
 
 	// Check specific AI checks
@@ -62,9 +62,9 @@ func TestRegisterAIChecksWithNilClient(t *testing.T) {
 	// Register with nil client
 	reg.RegisterAIChecks(nil)
 
-	// Count should remain 75
-	if reg.Count() != 75 {
-		t.Errorf("expected 75 checks with nil AI client, got %d", reg.Count())
+	// Count should remain 38
+	if reg.Count() != 38 {
+		t.Errorf("expected 38 checks with nil AI client, got %d", reg.Count())
 	}
 }
 
@@ -76,9 +76,9 @@ func TestRegisterAIChecksWithUnavailableClient(t *testing.T) {
 	unconfiguredClient := &aipkg.Client{}
 	reg.RegisterAIChecks(unconfiguredClient)
 
-	// Count should remain 75 since client is not available
-	if reg.Count() != 75 {
-		t.Errorf("expected 75 checks with unavailable AI client, got %d", reg.Count())
+	// Count should remain 38 since client is not available
+	if reg.Count() != 38 {
+		t.Errorf("expected 38 checks with unavailable AI client, got %d", reg.Count())
 	}
 }
 
@@ -107,8 +107,8 @@ func TestGetAll(t *testing.T) {
 	reg.RegisterAll()
 
 	checks := reg.GetAll()
-	if len(checks) != 75 {
-		t.Errorf("expected 75 checks, got %d", len(checks))
+	if len(checks) != 38 {
+		t.Errorf("expected 38 checks, got %d", len(checks))
 	}
 }
 
@@ -117,8 +117,8 @@ func TestGetAllByID(t *testing.T) {
 	reg.RegisterAll()
 
 	checks := reg.GetAllByID()
-	if len(checks) != 75 {
-		t.Errorf("expected 75 checks, got %d", len(checks))
+	if len(checks) != 38 {
+		t.Errorf("expected 38 checks, got %d", len(checks))
 	}
 
 	// Verify specific check exists
@@ -129,15 +129,15 @@ func TestGetAllByID(t *testing.T) {
 
 func TestCount(t *testing.T) {
 	reg := NewRegistry()
-	
+
 	if reg.Count() != 0 {
 		t.Errorf("expected 0 checks initially, got %d", reg.Count())
 	}
 
 	reg.RegisterAll()
-	
-	if reg.Count() != 75 {
-		t.Errorf("expected 75 checks after registration, got %d", reg.Count())
+
+	if reg.Count() != 38 {
+		t.Errorf("expected 38 checks after registration, got %d", reg.Count())
 	}
 }
 
@@ -147,7 +147,6 @@ func TestGetCategories(t *testing.T) {
 
 	expectedCategories := []string{
 		"Android", "iOS", "Flutter", "Security", "Policy",
-		"Code Quality", "Testing", "Linting", "Documentation", "Performance",
 		"AI Analysis", "Reviewer",
 	}
 
